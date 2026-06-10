@@ -1,0 +1,99 @@
+[gd_scene format=3 uid="uid://58xfihayu6mu"]
+
+[ext_resource type="Script" uid="uid://b3jfjfswp3saa" path="res://scripts/main.gd" id="1_o5qli"]
+
+[sub_resource type="SystemFont" id="SystemFont_o5qli"]
+font_names = PackedStringArray("Monospace")
+
+[node name="Control" type="Control" unique_id=1425717176]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_o5qli")
+
+[node name="TextAreas" type="VFlowContainer" parent="." unique_id=613506525]
+layout_mode = 0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = 764.0
+offset_bottom = 631.0
+
+[node name="Input" type="CodeEdit" parent="TextAreas" unique_id=1851297983]
+custom_minimum_size = Vector2(300, 621)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_fonts/font = SubResource("SystemFont_o5qli")
+placeholder_text = "Paste ExplorerScript here..."
+
+[node name="Output" type="CodeEdit" parent="TextAreas" unique_id=2068027404]
+custom_minimum_size = Vector2(450, 235)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_fonts/font = SubResource("SystemFont_o5qli")
+placeholder_text = "Lua Output will show up here..."
+editable = false
+emoji_menu_enabled = false
+
+[node name="StringOutput" type="CodeEdit" parent="TextAreas" unique_id=744459957]
+custom_minimum_size = Vector2(450, 235)
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_fonts/font = SubResource("SystemFont_o5qli")
+placeholder_text = "Extracted Strings will show up here..."
+editable = false
+emoji_menu_enabled = false
+
+[node name="Buttons" type="HFlowContainer" parent="." unique_id=210627131]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -368.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = 260.0
+grow_horizontal = 0
+alignment = 1
+
+[node name="ConvertBtn" type="Button" parent="Buttons" unique_id=1669739854]
+custom_minimum_size = Vector2(350, 0)
+layout_mode = 2
+text = "Convert"
+
+[node name="CopyLuaBtn" type="Button" parent="Buttons" unique_id=684636581]
+custom_minimum_size = Vector2(175, 0)
+layout_mode = 2
+text = "Copy Lua"
+
+[node name="ExportLuaBtn" type="Button" parent="Buttons" unique_id=1260919496]
+custom_minimum_size = Vector2(175, 0)
+layout_mode = 2
+text = "Export Lua"
+
+[node name="CopyStringsBtn" type="Button" parent="Buttons" unique_id=233460233]
+custom_minimum_size = Vector2(175, 0)
+layout_mode = 2
+text = "Copy Strings (.xml)"
+
+[node name="ExportStringsBtn" type="Button" parent="Buttons" unique_id=812067875]
+custom_minimum_size = Vector2(175, 0)
+layout_mode = 2
+text = "Export Strings (.xml)"
+
+[node name="Label" type="Label" parent="Buttons" unique_id=1547255581]
+layout_mode = 2
+text = "String Prefix:"
+
+[node name="StringPrefixBox" type="LineEdit" parent="Buttons" unique_id=1222426845]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Change String Prefix..."
+
+[connection signal="pressed" from="Buttons/ConvertBtn" to="." method="_on_convert_btn_pressed"]
+[connection signal="pressed" from="Buttons/CopyLuaBtn" to="." method="_on_copy_lua_btn_pressed"]
+[connection signal="pressed" from="Buttons/ExportLuaBtn" to="." method="_on_export_lua_btn_pressed"]
+[connection signal="pressed" from="Buttons/CopyStringsBtn" to="." method="_on_copy_strings_btn_pressed"]
+[connection signal="pressed" from="Buttons/ExportStringsBtn" to="." method="_on_export_strings_btn_pressed"]
