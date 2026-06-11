@@ -3552,8 +3552,8 @@ func _convert_turn_to_direction(line: String) -> String:
 
 	return _indent() + "-- %s" % line
 
-func _convert_wait_execute_lives(_line: String) -> String:
-	return ""
+func _convert_wait_execute_lives(line: String) -> String:
+	return _indent() + "-- !! %s" % line
 
 func _convert_call_common(line: String) -> String:
 	var tokens = _tokenize_line(line)
