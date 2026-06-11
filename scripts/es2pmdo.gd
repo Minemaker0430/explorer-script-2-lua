@@ -3686,7 +3686,7 @@ func _convert_message(line: String) -> String:
 	var start = line.find("\"")
 	var end = line.find("\",", start + 1)
 
-	if line.find("\"\"\"") != -1:
+	if line.find("\"\"\"") == start:
 		start += 2
 		end -= 2
 
