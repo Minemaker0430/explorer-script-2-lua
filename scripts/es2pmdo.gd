@@ -3804,7 +3804,8 @@ static func get_actor(id: String) -> String:
 	"ACTOR_NPC_DAGUTORIO": "Dugtrio",
 	"ACTOR_NPC_PUKURIN": "Wigglytuff",
 	"ACTOR_NPC_BIPPA": "Bidoof",
-	"ACTOR_NPC_HEIGANI": "Sunflora"
+	"ACTOR_NPC_HEIGANI": "Corphish",
+	"ACTOR_NPC_KIMAWARI": "Sunflora"
 	}
 
 	if ACTORS.has(id):
