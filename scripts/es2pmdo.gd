@@ -3187,6 +3187,7 @@ func _convert_line(line: String) -> String:
 	{"prefix": "MovePositionOffset", "func": "_convert_move_position_offset"},
 	{"prefix": "Move2PositionOffset", "func": "_convert_move_position_offset"},
 	{"prefix": "MovePositionMark", "func": "_convert_move_position_mark"},
+	{"prefix": "Move2PositionMark", "func": "_convert_move_position_mark"},
 	{"prefix": "WaitExecuteLives", "func": "_convert_wait_execute_lives"},
 	{"prefix": "message_SetFace", "func": "_convert_set_face"},
 	{"prefix": "message_SwitchMonologue", "func": "_convert_switch_talk"},
@@ -3339,7 +3340,7 @@ func _convert_me_play(line: String) -> String:
 	var tokens = _tokenize_line(line)
 	if tokens.size() > 1:
 		return _indent() + "SOUND:PlayFanfare(\"%s\")" % get_ME(tokens[2].strip_edges())
-	return _indent() + "-- TODO se_Play: %s" % line
+	return _indent() + "-- TODO me_Play: %s" % line
 
 func _convert_back_set_ground(line: String) -> String:
 	return _indent() + "-- %s (Should be the map you're currently on, or the map it sends you to next)" % line
@@ -3386,12 +3387,16 @@ func _convert_set_animation(line: String) -> String:
 		var tokens = _tokenize_line(line)
 		var actor = get_actor(_current_scope().data.args[0].substr(6).strip_edges())
 		if tokens.size() > 1:
+			if tokens[2].strip_edges() == "2":
+				return _indent(-1) + "GROUND:CharEndAnim(CH(\'%s\')" % actor
 			return _indent(-1) + "GROUND:CharSetAnim(CH(\'%s\'), \"%s\", false)" % [actor, get_animation(tokens[2].strip_edges())]
 
 	if line.find("<actor") != -1:
 		var tokens = _tokenize_line(line)
 		var actor = get_actor(tokens[0].substr(line.find("<actor") + 6, line.find(">") - line.find("<") - 6).strip_edges())
 		if tokens.size() > 1:
+			if tokens[2].strip_edges() == "2":
+				return _indent() + "GROUND:CharEndAnim(CH(\'%s\')" % actor
 			return _indent() + "GROUND:CharSetAnim(CH(\'%s\'), \"%s\", false)" % [actor, get_animation(tokens[2].strip_edges())]
 
 	return _indent() + "-- TODO SetAnimation: %s" % line
@@ -3427,7 +3432,7 @@ func _convert_move_position_offset(line: String) -> String:
 			var speed = int(tokens[2].strip_edges())
 			var x = tokens[4].strip_edges()
 			var y = tokens[6].strip_edges()
-			return _indent(-1) + "GROUND:MoveToPosition(CH(\'%s\'), CH(\'%s\').Position.X + %s, CH(\'%s\').Position.Y + %s, %s, %s)" % [actor, actor, x, actor, y, str(floori(normalize_speed(speed)) > 2), floori(normalize_speed(speed))]
+			return _indent(-1) + "ExplorerEssentials.MoveToPositionOffset(CH(\'%s\'), %s, %s, %s, %s)" % [actor, x, y, str(floori(normalize_speed(speed)) > 2), floori(normalize_speed(speed))]
 	
 	if line.find("<actor") != -1:
 		var tokens = _tokenize_line(line)
@@ -3436,7 +3441,7 @@ func _convert_move_position_offset(line: String) -> String:
 			var speed = int(tokens[2].strip_edges())
 			var x = tokens[4].strip_edges()
 			var y = tokens[6].strip_edges()
-			return _indent() + "GROUND:MoveToPosition(CH(\'%s\'), CH(\'%s\').Position.X + %s, CH(\'%s\').Position.Y + %s, %s, %s)" % [actor, actor, x, actor, y, str(floori(normalize_speed(speed)) > 2), floori(normalize_speed(speed))]
+			return _indent() + "ExplorerEssentials.MoveToPositionOffset(CH(\'%s\'), %s, %s, %s, %s)" % [actor, x, y, str(floori(normalize_speed(speed)) > 2), floori(normalize_speed(speed))]
 
 	return _indent() + "-- TODO MovePositionOffset: %s" % line
 
@@ -3448,8 +3453,7 @@ func _convert_move_position_mark(line: String) -> String:
 				var speed = int(tokens[2].strip_edges())
 				var mark = get_position_mark(line.substr(line.find("Position<")))
 				context.position_marks.push_back(mark)
-				output.push_back(_indent(-1) + "-- Moving Camera to (%s, %s) with speed %s and performer %s | Duration has to be replaced manually. The reason the duration is so complicated is because Vanilla EoS camera movement measures in *speed*, not total duration" % [mark.x, mark.y, floori(normalize_speed(speed)), context.camera_performer])
-				return _indent(-1) + "GAME:MoveCamera(%s, %s, 60, false)" % [mark.x, mark.y]
+				return _indent(-1) + "ExplorerEssentials.MoveCameraAtSpeed(%s, %s, %s, false)" % [mark.x, mark.y, floori(normalize_speed(speed))]
 				
 		var actor = get_actor(_current_scope().data.args[0].substr(6).strip_edges())
 		if line.find("Position<") != -1:
@@ -3470,8 +3474,7 @@ func _convert_move_position_mark(line: String) -> String:
 				var speed = int(tokens[2].strip_edges())
 				var mark = get_position_mark(line.substr(line.find("Position<")))
 				context.position_marks.push_back(mark)
-				output.push_back(_indent() + "-- Moving Camera to (%s, %s) with speed %s and performer %s | Duration has to be replaced manually. The reason the duration is so complicated is because Vanilla EoS camera movement measures in *speed*, not total duration" % [mark.x, mark.y, floori(normalize_speed(speed)), context.camera_performer])
-				return _indent() + "GAME:MoveCamera(%s, %s, 60, false)" % [mark.x, mark.y]
+				return _indent(-1) + "ExplorerEssentials.MoveCameraAtSpeed(%s, %s, %s, false)" % [mark.x, mark.y, floori(normalize_speed(speed))]
 		
 		var actor = get_actor(tokens[0].substr(line.find("<actor") + 6, line.find(">") - line.find("<") - 6).strip_edges())
 		if line.find("Position<") != -1:
@@ -3562,7 +3565,7 @@ func _convert_call_common(line: String) -> String:
 			"CORO_HANYOU_SAVE_FUNC":
 				return _indent() + "ExplorerEssentials.AutosaveWithNotification()"
 			"CORO_MESSAGE_CLOSE_WAIT_FUNC":
-				return "" 
+				return _indent() + "-- !! %s" % line 
 			_:
 				return _indent() + "-- TODO CallCommon: %s" % line
 	return _indent() + "-- TODO CallCommon: %s" % line
@@ -3695,6 +3698,7 @@ func _convert_message(line: String) -> String:
 		var args := []
 		var message = line.substr(start + 1, end - start - 1)
 		message = message.replace("[K]", "[pause=0]")
+		message = message.replace("[C]", "[br]")
 		message = message.replace("[W:", "[pause=")
 		if message.find("[CN]") != -1:
 				output.push_back(_indent(-1) + "UI:SetCenter(true)")
@@ -3705,12 +3709,41 @@ func _convert_message(line: String) -> String:
 				message = message.erase(message.find("[hero]"), 6).insert(message.find("[hero]"), "{%s}" % arg_count)
 				args.push_back("CH('PLAYER'):GetDisplayName()")
 				arg_count += 1
+			if message.find("[partner]") != -1:
+				message = message.erase(message.find("[partner]"), 9).insert(message.find("[partner]"), "{%s}" % arg_count)
+				args.push_back("CH('PARTNER'):GetDisplayName()")
+				arg_count += 1
+			if message.find("[c_kind:PLAYER]") != -1:
+				message = message.erase(message.find("[c_kind:PLAYER]"), 6).insert(message.find("[c_kind:PLAYER]"), "{%s}" % arg_count)
+				args.push_back("_DATA:GetMonster(CH(\'PLAYER\').CurrentForm.Species):GetColoredName()")
+				arg_count += 1
+			if message.find("[c_kind:ATTENDANT1]") != -1:
+				message = message.erase(message.find("[c_kind:ATTENDANT1]"), 9).insert(message.find("[c_kind:ATTENDANT1]"), "{%s}" % arg_count)
+				args.push_back("_DATA:GetMonster(CH(\'PARTNER\').CurrentForm.Species):GetColoredName()")
+				arg_count += 1
+			if message.find("[team]") != -1:
+				message = message.erase(message.find("[team]"), 6).insert(message.find("[team]"), "{%s}" % arg_count)
+				args.push_back("GAME:GetTeamName()")
+				arg_count += 1
 			if message.find("[CS:N]") != -1:
 				var astart = message.find("[CS:N]")
 				var aend = message.find("[CR]", astart + 1)
 				var name = message.substr(astart + 6, aend - astart - 6)
 				args.push_back("CH('%s'):GetDisplayName()" % name.to_upper().strip_edges())
 				message = message.erase(astart, aend - astart + 4).insert(astart, "{%s}" % arg_count)
+				arg_count += 1
+			if message.find("[CS:I]") != -1:
+				var astart = message.find("[CS:I]")
+				var aend = message.find("[CR]", astart + 1)
+				var name = message.substr(astart + 6, aend - astart - 6)
+				args.push_back("RogueEssence.Dungeon.InvItem(\"%s\"):GetDisplayName()" % name.to_camel_case().to_lower())
+				message = message.erase(astart, aend - astart + 4).insert(astart, "{%s}" % arg_count)
+				arg_count += 1
+			if message.find("[FT:1]") != -1:
+				var astart = message.find("[FT:1]")
+				var aend = message.find("[FT:0]", astart + 1)
+				var text = message.substr(astart + 6, aend - astart - 6).to_upper()
+				message = message.erase(astart, aend - astart + 4).insert(astart, to_unown(text))
 				arg_count += 1
 
 		var msg_count = 1
@@ -3726,7 +3759,7 @@ func _convert_message(line: String) -> String:
 		if _current_scope().type == "switch_branch":
 			var lines = _current_scope().data.lines
 			lines.push_back(_indent(-1) + "UI:WaitShowDialogue(STRINGS:Format(STRINGS.MapStrings[\'%s\']%s))" % [var_name, ", " + ", ".join(args)])
-			_current_scope()["data"].merge({"lines": lines}, true)
+			_current_scope()["data"].merge({"lines": lines, "args": args}, true)
 			_close_scope()
 			_process_line(line.substr(line.find("}") + 1).strip_edges())
 			return ""
@@ -3753,6 +3786,14 @@ func _tokenize_line(line: String) -> PackedStringArray:
 		res.append(token.strip_edges())
 	return res
 
+static func to_unown(text: String) -> String:
+	var res = ""
+	for c in range(text):
+		var u = text.unicode_at(c)
+		res.push_back("\\u%s" % (u + 0xE000))
+	
+	return res
+
 static func get_position_mark(line: String) -> Dictionary:
 	if not line.begins_with("Position<"):
 		return {}
@@ -3772,8 +3813,8 @@ static func get_position_mark(line: String) -> Dictionary:
 
 static func normalize_speed(speed: int) -> float:
 	if speed >= 32770:
-		return ((float(speed) / 32770.0))
-	return speed * 2.0
+		return max((float(speed) / 32770.0), 1)
+	return max(speed * 2.0, 1)
 
 static func get_dir(id: String) -> String:
 	const DIRS = {
@@ -3814,19 +3855,26 @@ static func get_actor(id: String) -> String:
 
 static func get_sfx(id: String) -> String:
 	const SFX = {
+	"5143": "EVT_Battle_Flash",
 	"6408": "EVT_CH02_Guild_Gate_Open",
+	"6411": "EVT_CH02_Box_Open",
 	"6410": "EVT_CH02_Item_Place",
 	"8961": "EVT_Emote_Sweatdrop",
 	"8962": "EVT_Emote_Confused",
 	"8963": "EVT_Emote_Confused_2",
 	"8964": "EVT_Emote_Exclaim",
+	"8965": "EVT_Emote_Exclaim_Idea",
+	"8966": "EVT_Emote_Exclaim_Realized",
 	"8967": "EVT_Emote_Exclaim_Surprised",
 	"8968": "EVT_Emote_Shock",
 	"8969": "EVT_Emote_Shock_Bad",
+	"8970": "EVT_Emote_Complain",
 	"8971": "EVT_Emote_Complain_2",
 	"8972": "EVT_Emote_Sweating",
-	"8973": "EVT_Emote_Shocked_2",
+	"8973": "EVT_Emote_Shock_2",
 	"8974": "EVT_Emote_Startled",
+	"8976": "EVT_Minigame_Correct",
+	"8977": "EVT_Minigame_Wrong",
 	"8978": "EVT_Emote_Exclaim_2",
 	}
 	if SFX.has(id):
@@ -3857,7 +3905,9 @@ static func get_emotion(id: String) -> String:
 	"FACE_SAD": "Sad",
 	"FACE_INSPIRED": "Inspired",
 	"FACE_SURPRISED": "Surprised",
-	"FACE_ANGRY": "Angry"
+	"FACE_ANGRY": "Angry",
+	"FACE_SIGH": "Sigh",
+	"FACE_DIZZY": "Dizzy"
 	}
 	if EMOTIONS.has(id):
 		return EMOTIONS[id]
@@ -3890,6 +3940,7 @@ static func get_emote(id: String) -> String:
 	"EFFECT_ANGRY": "angry",
 	"EFFECT_QUESTION_MARK": "question",
 	"EFFECT_JOYOUS": "glowing",
+	"EFFECT_LAUGHING": "happy",
 	"EFFECT_NONE": "none"
 	}
 	if EMOTES.has(id):
@@ -3898,18 +3949,94 @@ static func get_emote(id: String) -> String:
 
 static func get_ME(id: String) -> String:
 	const ME = {
-	"1": "Fanfare/LevelUp.ogg", # level up sound
-	"2": "Fanfare/RankUp.ogg", # rank up sound
-	"3": "Fanfare/LeaveTeam.ogg", # removed from assembly
-	"4": "Fanfare/Item.ogg", # item reward
+	"1": "Fanfare/LevelUp", # level up sound
+	"2": "Fanfare/RankUp", # rank up sound
+	"3": "Fanfare/LeaveTeam", # removed from assembly
+	"4": "Fanfare/Item", # item reward
 	"_5": "UNK", # se unlock / legendary recruit
-	"6": "Fanfare/NewArea.ogg", # map clears up
-	"7": "Fanfare/Note.ogg", # message notification sound
-	"8": "Fanfare/Promotion.ogg", # (unsure if this is the correct sfx) evolving
-	"9": "Fanfare/Treasure.ogg", # (unsure if this is the correct sfx) great item reward
+	"6": "Fanfare/NewArea", # map clears up
+	"7": "Fanfare/Note", # message notification sound
+	"8": "Fanfare/Promotion", # (unsure if this is the correct sfx) evolving
+	"9": "Fanfare/Treasure", # (unsure if this is the correct sfx) great item reward
 	"_10": "UNK", # "something's stirring..."
 	"_11": "UNK", # 10 but louder
 	}
 	if ME.has(id):
 		return ME[id]
-	return "UNK_%s.ogg" % id
+	return "UNK_%s" % id
+
+static func get_icon(id: String) -> String:
+	const ICON = {
+		"[M:B0]": "STRINGS:LocalKeyString(7)", # Start
+		"[M:B1]": "STRINGS:LocalKeyString(8)", # Select
+		"[M:B2]": "STRINGS:LocalKeyString(2)", # A
+		"[M:B3]": "STRINGS:LocalKeyString(3)", # B
+		"[M:B4]": "STRINGS:LocalKeyString(5)", # X
+		"[M:B5]": "STRINGS:LocalKeyString(9)", # Y
+		"[M:B6]": "STRINGS:LocalKeyString(4)", # L
+		"[M:B7]": "STRINGS:LocalKeyString(6)", # R
+		"[M:B8]": "\\uF008", # D-Pad
+		".[M:B9]": "", # - Block
+		".[M:B10]": "", # Check Block
+		".[M:B11]": "",	# X Block
+		".[M:B12]": "",	# Up Block
+		".[M:B13]": "",	# Down Block
+		".[M:B14]": "",	# Left Block
+		".[M:B15]": "",	# Right Block
+		".[M:B16]": "",	# Rewind Block
+		".[M:B17]": "",	# FF Block
+		".[M:B18]": "",	# Sort Block
+		".[M:B19]": "",	# Search Block
+		"[M:B20]": "\\uF009", # D-Pad U-D Block
+		"[M:B21]": "\\uF00A", # D-Pad L-R Block
+		".[M:B22]": "",	# - Gold Block
+		".[M:B23]": "",	# Check Gold Block
+		".[M:B24]": "",	# X Gold Block
+		".[M:B25]": "",	# Up Gold Block
+		".[M:B26]": "",	# Down Gold Block
+		".[M:B27]": "",	# Left Gold Block
+		".[M:B28]": "",	# Right Gold Block
+		".[M:B29]": "",	# Rewind Gold Block
+		".[M:B30]": "",	# FF Gold Block
+		".[M:B31]": "",	# Sort Gold Block
+		".[M:B32]": "",	# Search Gold Block
+		"[M:S0]": "\\uE024", # P-Money
+		"[M:S1]": " ", # Space
+		"[M:S2]": "\\uE10A", # Check
+		"[M:S3]": "\\uE10C", # Star
+		"[M:S4]": "\\uE10B", # X
+		".[M:S5]": "", # Check X
+		".[M:S6]": "", # Bag
+		".[M:S7]": "", # Hut
+		".[M:H0]": "", # Heart pink vsmall
+		".[M:H1]": "", # Heart pink small
+		".[M:H2]": "", # Heart pink
+		".[M:H3]": "", # Heart pink big
+		".[M:H4]": "", # Heart yellow vsmall
+		".[M:H5]": "", # Heart yellow small
+		".[M:H6]": "", # Heart yellow
+		".[M:H7]": "", # Heart yellow big
+		".[M:H8]": "", # Heart pink unshaded
+		"[M:R0]": "—", # Dash
+		"[M:R1]": "\\uE10D", # Half Star
+		".[M:R2]": "", # Amber Gem?
+		"[M:R3]": "\\uE10E", # Unopened Mail
+		"[M:R4]": "\\uE10F", # Open Mail
+		"[M:R5]": "", # Letter
+		"[M:R6]": "\\uE110", # Newspaper
+		"[M:R7]": "\\uE111", # ! Box
+		".[M:R8]": "", # Wi-Fi
+		".[M:R9]": "", # E-Mail
+		"[M:T0]": ":", # Colon
+		"[M:T1]": "\\uE040", # Text Bubble
+		"[M:T2]": "\\u2423", # Space Indicator
+		".[M:T3]": "", # Space Indicator Red
+		".[M:T4]": "", # Kanji 'Kari' (temp)
+		".[M:T5]": "", # Kanji 'Su' (end)
+		".[M:T6]": "", # Katakana 'De'
+		"[M:I0]": "\\uE0AD", # TM
+		"[M:I1]": "\\uE0A9" # Orb
+	}
+	if ICON.has(id):
+		return ICON[id]
+	return id
