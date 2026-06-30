@@ -3101,8 +3101,13 @@ func _process_line(raw_line: String) -> void:
 		return
 	
 	if line.begins_with("def "):
-		output.push_back(_indent() + "function DEF_%s()" % line.substr(4, line.find("{") - 4).strip_edges())
-		_push_scope("function")
+		if line.find("for actor") != -1:
+			output.push_back(_indent() + "function DEF_%s()" % line.substr(4, line.find("for actor") - 4).strip_edges())
+			var actor = get_actor(line.substr(line.find("for actor") + 4, line.find("{") - (line.find("for actor") + 4)).strip_edges())
+			_push_scope("function", {"args": [actor]})
+		else:
+			output.push_back(_indent() + "function DEF_%s()" % line.substr(4, line.find("{") - 4).strip_edges())
+			_push_scope("function")
 		output.push_back(_indent() + "local hTalkKind = SV.Personality.HeroTalkKind")
 		output.push_back(_indent() + "local pTalkKind = SV.Personality.PartnerTalkKind")
 		_process_line(line.substr(line.find("{") + 1))
@@ -3213,6 +3218,7 @@ func _convert_line(line: String) -> String:
 	{"prefix": "camera2_SetPositionMark", "func": "_irrelevant"},
 	{"prefix": "end", "func": "_ignore"},
 	{"prefix": "Destroy", "func": "_convert_destroy"}
+	#{"prefix": "if", "func": "_convert_if"}
 	]
 	for rule in rules:
 		if line.begins_with(rule["prefix"]):
@@ -3229,7 +3235,7 @@ func _convert_execute_common(line: String) -> String:
 	var tokens = _tokenize_line(line)
 	var actor = "UNK"
 
-	if _current_scope().type == "with":
+	if _current_scope().type == "with" or (_current_scope().type == "function" and _current_scope().data.has("args")):
 		actor = get_actor(_current_scope().data.args[0].substr(6).strip_edges())
 	elif line.find("<actor") != 1:
 		actor = get_actor(tokens[0].substr(line.find("<actor") + 6, line.find(">") - line.find("<") - 6).strip_edges())
@@ -3237,37 +3243,37 @@ func _convert_execute_common(line: String) -> String:
 	if tokens.size() > 1:
 		match tokens[2].strip_edges():
 			"CORO_LOOK_AROUND_FUNC_SERIES":
-				if _current_scope().type == "with":
+				if _current_scope().type == "with" or (_current_scope().type == "function" and _current_scope().data.has("args")):
 					return _indent(-1) + "CharacterActions.LookAround(CH(\'%s\'))" % actor
 				elif line.find("<actor") != 1:
 					return _indent() + "CharacterActions.LookAround(CH(\'%s\'))" % actor
 				return _indent() + "-- TODO: ExecuteCommon: %s" % line
 			"CORO_JUMP_HAPPY_FUNC_SERIES":
-				if _current_scope().type == "with":
+				if _current_scope().type == "with" or (_current_scope().type == "function" and _current_scope().data.has("args")):
 					return _indent(-1) + "CharacterActions.HopOnce(CH(\'%s\'), CH(\'%s\').Direction)" % [actor, actor]
 				elif line.find("<actor") != 1:
 					return _indent() + "CharacterActions.HopOnce(CH(\'%s\'), CH(\'%s\').Direction)" % [actor, actor]
 				return _indent() + "-- TODO: ExecuteCommon: %s" % line
 			"CORO_JUMP_ANGRY_FUNC_SERIES":
-				if _current_scope().type == "with":
+				if _current_scope().type == "with" or (_current_scope().type == "function" and _current_scope().data.has("args")):
 					return _indent(-1) + "CharacterActions.HopTwice(CH(\'%s\'), CH(\'%s\').Direction)" % [actor, actor]
 				elif line.find("<actor") != 1:
 					return _indent() + "CharacterActions.HopTwice(CH(\'%s\'), CH(\'%s\').Direction)" % [actor, actor]
 				return _indent() + "-- TODO: ExecuteCommon: %s" % line
 			"CORO_JUMP_SURPRISE_FUNC_SERIES":
-				if _current_scope().type == "with":
+				if _current_scope().type == "with" or (_current_scope().type == "function" and _current_scope().data.has("args")):
 					return _indent(-1) + "CharacterActions.ScaredJump(CH(\'%s\'), CH(\'%s\').Direction)" % [actor, actor]
 				elif line.find("<actor") != 1:
 					return _indent() + "CharacterActions.ScaredJump(CH(\'%s\'), CH(\'%s\').Direction)" % [actor, actor]
 				return _indent() + "-- TODO: ExecuteCommon: %s" % line
 			"CORO_EXPLANATION_FUNC_SERIES":
-				if _current_scope().type == "with":
+				if _current_scope().type == "with" or (_current_scope().type == "function" and _current_scope().data.has("args")):
 					return _indent(-1) + "CharacterActions.Explain(CH(\'%s\'))" % actor
 				elif line.find("<actor") != 1:
 					return _indent() + "CharacterActions.Explain(CH(\'%s\'))" % actor
 				return _indent() + "-- TODO: ExecuteCommon: %s" % line
 			"CORO_HEAD_SHAKE_FUNC_SERIES":
-				if _current_scope().type == "with":
+				if _current_scope().type == "with" or (_current_scope().type == "function" and _current_scope().data.has("args")):
 					return _indent(-1) + "CharacterActions.ShakeHead(CH(\'%s\'), CH(\'%s\').Direction)" % [actor, actor]
 				elif line.find("<actor") != 1:
 					return _indent() + "CharacterActions.ShakeHead(CH(\'%s\'), CH(\'%s\').Direction)" % [actor, actor]
@@ -3313,7 +3319,7 @@ func _convert_bgm_fade_in(line: String) -> String:
 			return _indent() + "SOUND:PlayBGM(\"%s\", true, %s)\n%s" % [song, fade_time, _indent() + "SOUND:SetBGMVolume(%s)" % (volume.to_float() / 256.0)]
 		if fade_time.to_int() > 0:
 			return _indent() + "SOUND:PlayBGM(\"%s\", true, %s)" % [song, fade_time]
-		return _indent() + "SOUND:PlayBGM(\"%s\")" % song
+		return _indent() + "SOUND:PlayBGM(\"%s\", true)" % song
 	return _indent() + "-- TODO bgm_PlayFadeIn: %s" % line
 
 func _convert_bgm_fade_out(line: String) -> String:
@@ -3371,7 +3377,7 @@ func _convert_camera_position_mark(line: String) -> String:
 	return _indent() + "-- TODO camera_SetPositionMark: %s" % line
 
 func _convert_destroy(line: String) -> String:
-	if _current_scope().type == "with":
+	if _current_scope().type == "with" or (_current_scope().type == "function" and _current_scope().data.has("args")):
 		var actor = get_actor(_current_scope().data.args[0].substr(6).strip_edges())
 		return _indent(-1) + "GROUND:Hide(\"%s\")" % [actor]
 
@@ -3383,12 +3389,12 @@ func _convert_destroy(line: String) -> String:
 	return _indent() + "-- TODO Destroy: %s" % line
 
 func _convert_set_animation(line: String) -> String:
-	if _current_scope().type == "with":
+	if _current_scope().type == "with" or (_current_scope().type == "function" and _current_scope().data.has("args")):
 		var tokens = _tokenize_line(line)
 		var actor = get_actor(_current_scope().data.args[0].substr(6).strip_edges())
 		if tokens.size() > 1:
 			if tokens[2].strip_edges() == "2":
-				return _indent(-1) + "GROUND:CharEndAnim(CH(\'%s\')" % actor
+				return _indent(-1) + "GROUND:CharEndAnim(CH(\'%s\'))" % actor
 			return _indent(-1) + "GROUND:CharSetAnim(CH(\'%s\'), \"%s\", false)" % [actor, get_animation(tokens[2].strip_edges())]
 
 	if line.find("<actor") != -1:
@@ -3396,13 +3402,13 @@ func _convert_set_animation(line: String) -> String:
 		var actor = get_actor(tokens[0].substr(line.find("<actor") + 6, line.find(">") - line.find("<") - 6).strip_edges())
 		if tokens.size() > 1:
 			if tokens[2].strip_edges() == "2":
-				return _indent() + "GROUND:CharEndAnim(CH(\'%s\')" % actor
+				return _indent() + "GROUND:CharEndAnim(CH(\'%s\'))" % actor
 			return _indent() + "GROUND:CharSetAnim(CH(\'%s\'), \"%s\", false)" % [actor, get_animation(tokens[2].strip_edges())]
 
 	return _indent() + "-- TODO SetAnimation: %s" % line
 
 func _convert_wait_animation(line: String) -> String:
-	if _current_scope().type == "with":
+	if _current_scope().type == "with" or (_current_scope().type == "function" and _current_scope().data.has("args")):
 		# get last line
 		var prev_line = output[-1].remove_chars("\t").remove_chars("\n").strip_edges()
 		if prev_line.begins_with("GROUND:CharSetAnim"):
@@ -3514,7 +3520,7 @@ func _convert_wait_effect(_line: String) -> String:
 	return _indent() + "GAME:WaitFrames(30)"
 
 func _convert_turn_to_direction_lives(line: String) -> String:
-	if _current_scope().type == "with":
+	if _current_scope().type == "with" or (_current_scope().type == "function" and _current_scope().data.has("args")):
 		var tokens = _tokenize_line(line)
 		var actor = get_actor(_current_scope().data.args[0].substr(6).strip_edges())
 		if tokens.size() > 1:
@@ -3596,6 +3602,19 @@ func _convert_message_talk(line: String) -> String:
 		_process_line(line.substr(line.find("{") + 1).strip_edges())
 		return ""
 	return _indent() + "-- TODO message_Talk: %s" % line
+
+func _convert_if(line: String) -> String:
+	var tokens = _tokenize_line(line)
+	if tokens.size() > 1:
+		var arg = tokens[2].strip_edges()
+		if arg == "$HERO_TALK_KIND":
+			arg = "hTalkKind"
+		if arg == "$PARTNER_TALK_KIND":
+			arg = "pTalkKind"
+		_push_scope("if", {"args": [arg], "cases": {}})
+		_process_line(line.substr(line.find("{") + 1))
+		return ""
+	return _indent() + "-- TODO message_SwitchMonologue: %s" % line
 
 func _convert_switch_talk(line: String) -> String:
 	var tokens = _tokenize_line(line)
@@ -3744,7 +3763,6 @@ func _convert_message(line: String) -> String:
 				var aend = message.find("[FT:0]", astart + 1)
 				var text = message.substr(astart + 6, aend - astart - 6).to_upper()
 				message = message.erase(astart, aend - astart + 4).insert(astart, to_unown(text))
-				arg_count += 1
 
 		var msg_count = 1
 		if context.msg_counts.has(speaker):
@@ -3814,7 +3832,7 @@ static func get_position_mark(line: String) -> Dictionary:
 static func normalize_speed(speed: int) -> float:
 	if speed >= 32770:
 		return max((float(speed) / 32770.0), 1)
-	return max(speed * 2.0, 1)
+	return max(speed, 1)
 
 static func get_dir(id: String) -> String:
 	const DIRS = {
