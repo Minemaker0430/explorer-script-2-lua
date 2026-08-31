@@ -3148,9 +3148,15 @@ func _close_scope() -> void:
 
 			match context.msg_type:
 				"voiceover":
-					output.push_back(_indent() + "UI:WaitShowVoiceOver(STRINGS:Format(STRINGS.MapStrings[\'%s\']), -1)" % scope.data.string)
+					if scope.data.args.size() > 0:
+						output.push_back(_indent() + "UI:WaitShowTimedDialogue(STRINGS:Format(STRINGS.MapStrings[\'%s\']), %s)" % [scope.data.string, ", ".join(scope.data.args)])
+					else:
+						output.push_back(_indent() + "UI:WaitShowVoiceOver(STRINGS:Format(STRINGS.MapStrings[\'%s\']), -1)" % scope.data.string)
 				_:
-					output.push_back(_indent() + "UI:WaitShowDialogue(STRINGS:Format(STRINGS.MapStrings[\'%s\']))" % scope.data.string)
+					if scope.data.args.size() > 0:
+						output.push_back(_indent() + "UI:WaitShowTimedDialogue(STRINGS:Format(STRINGS.MapStrings[\'%s\']), %s)" % [scope.data.string, ", ".join(scope.data.args)])
+					else:
+						output.push_back(_indent() + "UI:WaitShowDialogue(STRINGS:Format(STRINGS.MapStrings[\'%s\']))" % scope.data.string)
 			context.msg_type = "default"
 
 			if context.text_centered:
@@ -3202,6 +3208,8 @@ func _convert_line(line: String) -> String:
 	{"prefix": "message_Mail", "func": "_convert_message_talk"},
 	{"prefix": "message_Close", "func": "_ignore"},
 	{"prefix": "message_EmptyActor", "func": "_convert_msg_empty_actor"},
+	{"prefix": "message_ResetActor", "func": "_convert_msg_empty_actor"},
+	{"prefix": "message_SetActor", "func": "_convert_msg_set_actor"},
 	{"prefix": "me_Play", "func": "_convert_me_play"},
 	{"prefix": "case", "func": "_convert_case"},
 	{"prefix": "default", "func": "_convert_case"},
@@ -3588,7 +3596,17 @@ func _convert_set_face(line: String) -> String:
 	return _indent() + "-- TODO message_SetFace: %s" % line
 
 func _convert_msg_empty_actor(_line: String) -> String:
+	context.merge({"speaker": "UNKNOWN"}, true)
 	return _indent() + "ExplorerEssentials.SetSpeakerUnknown(nil)"
+
+func _convert_msg_set_actor(line: String) -> String:
+	var tokens = _tokenize_line(line)
+	if tokens.size() > 4:
+		var actor = get_actor(tokens[2].strip_edges())
+		context.merge({"speaker": actor}, true)
+		return _indent() + "UI:SetSpeaker(CH('%s'):GetDisplayName())" % actor
+	
+	return _indent() + "-- TODO message_SetActor: %s" % line
 
 func _convert_message_talk(line: String) -> String:
 	if line.begins_with("message_Explanation"):
@@ -3619,12 +3637,12 @@ func _convert_if(line: String) -> String:
 func _convert_switch_talk(line: String) -> String:
 	var tokens = _tokenize_line(line)
 	if tokens.size() > 1:
-		var arg = tokens[2].strip_edges()
-		if arg == "$HERO_TALK_KIND":
-			arg = "hTalkKind"
-		if arg == "$PARTNER_TALK_KIND":
-			arg = "pTalkKind"
-		_push_scope("switch", {"args": [arg], "cases": {}})
+		var param = tokens[2].strip_edges()
+		if param == "$HERO_TALK_KIND":
+			param = "hTalkKind"
+		if param == "$PARTNER_TALK_KIND":
+			param = "pTalkKind"
+		_push_scope("switch", {"param": param, "args": [], "cases": {}})
 		_process_line(line.substr(line.find("{") + 1))
 		return ""
 	return _indent() + "-- TODO message_SwitchMonologue: %s" % line
@@ -3640,15 +3658,16 @@ func _convert_case(line: String) -> String:
 
 func _close_switch_scope() -> String:
 	var scope = _current_scope()
-	var arg = scope.data.args[0]
+	var param = scope.data.param
+	var args = scope.data.args
 	var cases = scope.data.cases
 	var res = ""
 
 	# special cases for hTalkKind and pTalkKind
-	if arg == "hTalkKind" or arg == "pTalkKind":
+	if param == "hTalkKind" or param == "pTalkKind":
 		var keys = []
 		var values = []
-		var is_hero = (arg == "hTalkKind")
+		var is_hero = (param == "hTalkKind")
 
 		if is_hero:
 			keys = [extracted_strings.keys()[-2], extracted_strings.keys()[-1]]
@@ -3678,13 +3697,19 @@ func _close_switch_scope() -> String:
 				extracted_strings.erase(keys[i])
 			context.msg_counts.merge({context.speaker: context.msg_counts[context.speaker] - (keys.size() - 1)}, true)
 
-			res += _indent(-1) + "UI:WaitShowDialogue(STRINGS:Format(STRINGS.MapStrings['%s_'..tostring(%s)]))" % [reference_key, arg]
+			if args.size() > 0:
+				res += _indent(-1) + "UI:WaitShowDialogue(STRINGS:Format(STRINGS.MapStrings['%s_'..tostring(%s)], %s)" % [reference_key, param, ", ".join(args)]
+			else:
+				res += _indent(-1) + "UI:WaitShowDialogue(STRINGS:Format(STRINGS.MapStrings['%s_'..tostring(%s)]))" % [reference_key, param]
 		else:
 			for key in keys:
 				extracted_strings.erase(key)
 			context.msg_counts.merge({context.speaker: context.msg_counts[context.speaker] - (keys.size() - 1)}, true)
 			extracted_strings.merge({reference_key: values[0]}, true)
-			res += _indent(-1) + "UI:WaitShowDialogue(STRINGS:Format(STRINGS.MapStrings['%s']))" % reference_key
+			if args.size() > 0:
+				res += _indent(-1) + "UI:WaitShowDialogue(STRINGS:Format(STRINGS.MapStrings['%s']), %s)" % [reference_key, ", ".join(args)]
+			else:
+				res += _indent(-1) + "UI:WaitShowDialogue(STRINGS:Format(STRINGS.MapStrings['%s']))" % [reference_key]
 		
 		return res
 		
@@ -3694,9 +3719,9 @@ func _close_switch_scope() -> String:
 		if case == "default":
 			res += _indent(-1) + "else\n"
 		elif first:
-			res += _indent(-1) + "if %s == %s then\n" % [arg, case]
+			res += _indent(-1) + "if %s == %s then\n" % [param, case]
 		else:
-			res += _indent(-1) + "else if %s == %s then\n" % [arg, case]
+			res += _indent(-1) + "else if %s == %s then\n" % [param, case]
 		
 		for line in cases[case]:
 			res += line + "\n"
@@ -3732,12 +3757,16 @@ func _convert_message(line: String) -> String:
 				message = message.erase(message.find("[partner]"), 9).insert(message.find("[partner]"), "{%s}" % arg_count)
 				args.push_back("CH('PARTNER'):GetDisplayName()")
 				arg_count += 1
+			if message.find("[ATTENDANT1]") != -1:
+				message = message.erase(message.find("[ATTENDANT1]"), 12).insert(message.find("[ATTENDANT1]"), "{%s}" % arg_count)
+				args.push_back("CH('PARTNER'):GetDisplayName()")
+				arg_count += 1
 			if message.find("[c_kind:PLAYER]") != -1:
 				message = message.erase(message.find("[c_kind:PLAYER]"), 6).insert(message.find("[c_kind:PLAYER]"), "{%s}" % arg_count)
 				args.push_back("_DATA:GetMonster(CH(\'PLAYER\').CurrentForm.Species):GetColoredName()")
 				arg_count += 1
 			if message.find("[c_kind:ATTENDANT1]") != -1:
-				message = message.erase(message.find("[c_kind:ATTENDANT1]"), 9).insert(message.find("[c_kind:ATTENDANT1]"), "{%s}" % arg_count)
+				message = message.erase(message.find("[c_kind:ATTENDANT1]"), 19).insert(message.find("[c_kind:ATTENDANT1]"), "{%s}" % arg_count)
 				args.push_back("_DATA:GetMonster(CH(\'PARTNER\').CurrentForm.Species):GetColoredName()")
 				arg_count += 1
 			if message.find("[team]") != -1:
@@ -3824,8 +3853,8 @@ static func get_position_mark(line: String) -> Dictionary:
 
 	var tokens = line.split(",")
 	res.set("name", tokens[0].substr(tokens[0].find("\'") + 1, tokens[0].find("\'", tokens[0].find("\'") + 1) - tokens[0].find("\'") + 1))
-	res.set("x", floori(float(tokens[1].strip_edges()) * 8.0))
-	res.set("y", floori(float(tokens[2].left(tokens[2].find(">")).strip_edges()) * 8.0))
+	res.set("x", floori(float(tokens[1].strip_edges()) * 8.0) - 4) # offset by -0.5 tiles
+	res.set("y", floori(float(tokens[2].left(tokens[2].find(">")).strip_edges()) * 8.0) - 4) #offset by -0.5 tiles
 
 	return res
 
@@ -3925,7 +3954,9 @@ static func get_emotion(id: String) -> String:
 	"FACE_SURPRISED": "Surprised",
 	"FACE_ANGRY": "Angry",
 	"FACE_SIGH": "Sigh",
-	"FACE_DIZZY": "Dizzy"
+	"FACE_DIZZY": "Dizzy",
+	"FACE_DETERMINED": "Determined",
+	"FACE_SHOCKED": "Shocked"
 	}
 	if EMOTIONS.has(id):
 		return EMOTIONS[id]
