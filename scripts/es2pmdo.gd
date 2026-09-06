@@ -3930,9 +3930,23 @@ static func get_sfx(id: String) -> String:
 
 static func get_song(id: String) -> String:
 	const BGM = {
-	"BGM_WIGGLYTUFFS_GUILD": "008 - Wigglytuff's Guild.ogg",
-	"BGM_GUILDMASTER_WIGGLYTUFF": "009 - Guildmaster Wigglytuff.ogg",
-	"BGM_WIGGLYTUFFS_GUILD_REMIX": "011 - Wigglytuff's Guild Remix.ogg"
+	"BGM_ON_THE_BEACH_AT_DUSK": "BGM_Beach.ogg",
+	"BGM_BOSS_BATTLE": "BGM_Boss.ogg",
+	"BGM_SPINDAS_CAFE": "BGM_Cafe.ogg",
+	"BGM_IN_THE_DEPTHS_OF_THE_PIT": "BGM_Depths.ogg",
+	"BGM_WELCOME_TO_THE_WORLD_OF_POKEMON": "BGM_Dream.ogg",
+	"BGM_GOODNIGHT": "BGM_Goodnight.ogg",
+	"BGM_HEARTWARMING": "BGM_Heartwarming.ogg",
+	"BGM_JOB_CLEAR": "BGM_JobClear.ogg",
+	"BGM_TIME_GEAR": "BGM_TimeGear.ogg",
+	"BGM_OH_NO": "BGM_OhNo.ogg",
+	"BGM_TIME_GEAR_REMIX": "BGM_TimeGearRemix.ogg",
+	"BGM_TREASURE_TOWN": "BGM_TreasureTown.ogg",
+	"BGM_WIGGLYTUFFS_GUILD": "BGM_Guild.ogg",
+	"BGM_GUILDMASTER_WIGGLYTUFF": "BGM_Guildmaster.ogg",
+	"BGM_WIGGLYTUFFS_GUILD_REMIX": "BGM_GuildRemix.ogg",
+
+	"BGM_AMP_PLAINS": "BGM_DUN_AmpPlains.ogg"
 	}
 	const AMB = {
 	"BGM_OCEAN1": "AMB_Ocean.ogg"
@@ -3956,7 +3970,8 @@ static func get_emotion(id: String) -> String:
 	"FACE_SIGH": "Sigh",
 	"FACE_DIZZY": "Dizzy",
 	"FACE_DETERMINED": "Determined",
-	"FACE_SHOCKED": "Shocked"
+	"FACE_SHOCKED": "Shocked",
+	"FACE_TEARY_EYED": "TearyEyed"
 	}
 	if EMOTIONS.has(id):
 		return EMOTIONS[id]
